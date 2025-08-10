@@ -18,3 +18,6 @@ The code for the meshtastic monitoring station is included here. This monitoring
 * MQTT - Message queueing server running in Raspberry Pi OS
 * Meshtastic Bridge Script - Python script that listens to Meshtastic events received by the Heltec V3. Messages are populated in MQTT for display
 * Monitoring Dashboard HTML - Status HTML page that connects to MQTT using a WebSocket and dsiplays messages populated by the bridge script
+
+# Stand-alone Meshtastic Web Flasher
+This builds a docker container that is a simple nginx webserver for running the Web Flasher offline away when there is no internet access. This is helpful for environments where you are off-the-grid and don't have access to the internet, but need to flash nodes. 
