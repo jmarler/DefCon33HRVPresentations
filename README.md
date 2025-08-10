@@ -2,10 +2,14 @@
 Presentations and other code that I presented at the Ham Radio Village for DefCon 33
 
 ## Meshtastic - Mesh Networking Made Easy
-This presentation goes a brief introduction to Meshtastic, a mesh networking impelemntation using LoRa and LoRaWAN.
+This presentation goes a brief introduction to Meshtastic, a mesh networking impelemntation using LoRa and LoRaWAN. 
+- [Keynote](./Presentations/Meshtastic%20-%20Mesh%20networking%20made%20easy.key)  
+- [PDF](./Presentations/Meshtastic%20-%20Mesh%20networking%20made%20easy.pdf)
 
 ## Whats New in Digital Modes for 2025
-This presentation is a companion to my presentation on digital modes that includes an update for 2025 of what's new in digital modes.
+This presentation is a companion to my presentation on digital modes that includes an update for 2025 of what's new in digital modes. Keynote. PDF.
+- [Keynote](./Presentations/Meshtastic%20-%20Mesh%20networking%20made%20easy.key)  
+- [PDF](./Presentations/Amateur%20Radio%20Digital%20Modes%20-%202025%20Update.pdf)
 
 # Meshtastic Monitoring Station
 The code for the meshtastic monitoring station is included here. This monitoring station consists of multiple parts:
