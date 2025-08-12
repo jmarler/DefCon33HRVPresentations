@@ -21,5 +21,5 @@ The code for the meshtastic monitoring station is included [here](/dashboard). T
 * Read the [README](dashboard/README.md) in the dashboard direcotry for full setup instructions
 
 # Stand-alone Meshtastic Web Flasher
-This builds a docker container that is a simple nginx webserver for running the Web Flasher offline away when there is no internet access. This is helpful for environments where you are off-the-grid and don't have access to the internet, but need to flash nodes. 
+This builds a docker container that is a simple nginx webserver for running the Web Flasher offline when there is no internet access. This is helpful for environments where you are off-the-grid and don't have access to the internet, but need to flash nodes.
 * Follow the [README](webflasher/README.md) instructions for getting this up and running
