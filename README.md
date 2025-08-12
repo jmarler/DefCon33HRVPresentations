@@ -2,7 +2,7 @@
 Presentations and other code that I presented at the Ham Radio Village for DefCon 33
 
 ## Meshtastic - Mesh Networking Made Easy
-This presentation goes a brief introduction to Meshtastic, a mesh networking impelemntation using LoRa and LoRaWAN. 
+This presentation gives a brief introduction to Meshtastic, a mesh networking impelemntation using LoRa and LoRaWAN.
 - [Keynote](./Presentations/Meshtastic%20-%20Mesh%20networking%20made%20easy.key)  
 - [PDF](./Presentations/Meshtastic%20-%20Mesh%20networking%20made%20easy.pdf)
 
