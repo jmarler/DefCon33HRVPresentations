@@ -12,12 +12,14 @@ This presentation is a companion to my presentation on digital modes that includ
 - [PDF](./Presentations/Amateur%20Radio%20Digital%20Modes%20-%202025%20Update.pdf)
 
 # Meshtastic Monitoring Station
-The code for the meshtastic monitoring station is included here. This monitoring station consists of multiple parts:
+The code for the meshtastic monitoring station is included [here](/dashboard). This monitoring station consists of multiple parts:
 * Heltec V3 LoRaWAN Node - Flashed w/ DefCon firmware. Serial mode enabled
 * Raspberry Pi 4b - Running Raspberry Pi OS
 * MQTT - Message queueing server running in Raspberry Pi OS
-* Meshtastic Bridge Script - Python script that listens to Meshtastic events received by the Heltec V3. Messages are populated in MQTT for display
-* Monitoring Dashboard HTML - Status HTML page that connects to MQTT using a WebSocket and dsiplays messages populated by the bridge script
+* [Meshtastic Bridge Script](dashboard/mqtt_bridge.py) - Python script that listens to Meshtastic events received by the Heltec V3. Messages are populated in MQTT for display
+* [Monitoring Dashboard HTML](dashboard/meshtastic_dashboard.html) - Status HTML page that connects to MQTT using a WebSocket and dsiplays messages populated by the bridge script
+* Read the [README](dashboard/README.md) in the dashboard direcotry for full setup instructions
 
 # Stand-alone Meshtastic Web Flasher
 This builds a docker container that is a simple nginx webserver for running the Web Flasher offline away when there is no internet access. This is helpful for environments where you are off-the-grid and don't have access to the internet, but need to flash nodes. 
+* Follow the [README](webflasher/README.md) instructions for getting this up and running

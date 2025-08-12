@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DefCon 33 Meshtastic Monitor</title>
+    <script src="./mqttws31.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            font-size: 14px;
+        }
+        
+        .container {
+            max-width: 1890px;
+            margin: 0 auto;
+            height: calc(100vh - 30px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin: 0 0 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 2px 2px 4px rgba(0,0,0,0.3), 0 0 20px #667eea; }
+            to { text-shadow: 2px 2px 4px rgba(0,0,0,0.3), 0 0 30px #764ba2, 0 0 40px #764ba2; }
+        }
+        
+        .status {
+            background: rgba(255,255,255,0.1);
+            padding: 8px 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            font-size: 13px;
+        }
+        
+        .status-left {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .status-right {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 15px;
+            min-height: 0;
+        }
+        
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-height: 0;
+        }
+        
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-height: 0;
+        }
+        
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            height: 280px;
+        }
+        
+        .panel {
+            background: rgba(255,255,255,0.15);
+            border-radius: 12px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        .panel:hover {
+            transform: translateY(-1px);
+        }
+        
+        .panel h2 {
+            margin: 0 0 12px 0;
+            color: #fff;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 8px;
+            font-size: 1.1em;
+            flex-shrink: 0;
+        }
+        
+        .panel h3 {
+            margin: 15px 0 8px 0;
+            font-size: 1em;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        
+        .activity-panel {
+            flex: 1;
+            min-height: 0;
+        }
+        
+        .activity-table, .text-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 12px;
+        }
+        
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+        
+        .activity-table th, .activity-table td,
+        .text-table th, .text-table td {
+            padding: 6px 8px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .activity-table th, .text-table th {
+            background: rgba(0,0,0,0.3);
+            font-weight: bold;
+            color: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        
+        .stat-box {
+            background: rgba(0,0,0,0.2);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            transition: background 0.3s ease;
+        }
+        
+        .stat-box:hover {
+            background: rgba(0,0,0,0.3);
+        }
+        
+        .stat-number {
+            font-size: 1.6em;
+            font-weight: bold;
+            color: #4ade80;
+        }
+        
+        .stat-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+        
+        .battery-display {
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 8px 0;
+        }
+        
+        .battery-bar {
+            background: #333;
+            height: 16px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 4px 0;
+            position: relative;
+        }
+        
+        .battery-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ef4444, #eab308, #22c55e);
+            border-radius: 8px;
+            transition: width 0.3s ease;
+        }
+        
+        .battery-percentage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.7em;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        
+        .connection-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: bold;
+        }
+        
+        .connected {
+            background: #22c55e;
+            color: white;
+        }
+        
+        .disconnected {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .message-row {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        .message-row.new-message {
+            animation: slideIn 0.5s ease-out;
+            background: rgba(34, 197, 94, 0.2);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .type-text { color: #60a5fa; font-weight: bold; }
+        .type-telemetry { color: #34d399; }
+        .type-position { color: #fbbf24; }
+        .type-nodeinfo { color: #a78bfa; }
+        
+        .recent-nodes-list {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+        
+        .node-card {
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 8px 0;
+            border-left: 3px solid #4ade80;
+            transition: all 0.3s ease;
+            font-size: 12px;
+        }
+        
+        .node-card:hover {
+            background: rgba(0,0,0,0.3);
+            transform: translateX(3px);
+        }
+        
+        .node-card.inactive {
+            border-left-color: #6b7280;
+            opacity: 0.7;
+        }
+        
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .node-name {
+            font-weight: bold;
+            font-size: 1em;
+            color: #4ade80;
+        }
+        
+        .node-time {
+            font-size: 0.8em;
+            opacity: 0.7;
+        }
+        
+        .node-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            font-size: 0.85em;
+        }
+        
+        .node-stat {
+            text-align: center;
+            padding: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+        }
+        
+        .node-stat-value {
+            font-weight: bold;
+            color: white;
+        }
+        
+        .node-stat-label {
+            font-size: 0.75em;
+            opacity: 0.7;
+        }
+        
+        .signal-meter {
+            width: 100%;
+            height: 120px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .signal-bar {
+            position: absolute;
+            bottom: 0;
+            width: 6px;
+            background: linear-gradient(to top, #ef4444, #eab308, #22c55e);
+            margin: 0 1px;
+            transition: height 0.3s ease;
+            border-radius: 2px 2px 0 0;
+        }
+        
+        .network-health {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        
+        .health-indicator {
+            background: rgba(0,0,0,0.2);
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .health-value {
+            font-size: 1em;
+            font-weight: bold;
+        }
+        
+        .health-good { color: #22c55e; }
+        .health-warning { color: #eab308; }
+        .health-critical { color: #ef4444; }
+        
+        .alert-banner {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            margin: 8px 0;
+            display: none;
+            animation: slideDown 0.5s ease-out;
+            font-size: 13px;
+        }
+        
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8em;
+        }
+        
+        .btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
+        }
+        
+        .btn.active {
+            background: #4ade80;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 DefCon 33 Meshtastic Monitor 📡</h1>
+            <div class="status">
+                <div class="status-left">
+                    <span>MQTT: <span id="connectionStatus" class="connection-status disconnected">Disconnected</span></span>
+                    <span>Packets: <span id="packetCount">0</span></span>
+                    <span>Last: <span id="lastUpdate">Never</span></span>
+                    <span>Freq: <span id="frequency">915MHz</span></span>
+                </div>
+                <div class="status-right controls">
+                    <button class="btn" onclick="toggleFullscreen()">⛶ Full</button>
+                    <button class="btn" onclick="toggleSounds()" id="soundBtn">🔊 ON</button>
+                    <button class="btn" onclick="clearData()">🗑️ Clear</button>
+                    <button class="btn" onclick="exportData()">📥 Export</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="left-column">
+                <div class="panel activity-panel">
+                    <h2>📊 Recent Activity</h2>
+                    <div class="table-container">
+                        <table class="activity-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>From</th>
+                                    <th>Type</th>
+                                    <th>Content</th>
+                                    <th>RSSI</th>
+                                    <th>SNR</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activityTable">
+                                <tr><td colspan="6" style="text-align: center; opacity: 0.6;">Waiting for packets...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bottom-row">
+                    <div class="panel">
+                        <h2>💬 Text Messages</h2>
+                        <div class="alert-banner" id="alertBanner">
+                            🚨 <span id="alertText"></span>
+                        </div>
+                        <div class="table-container">
+                            <table class="text-table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>From</th>
+                                        <th>Message</th>
+                                        <th>Signal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="textTable">
+                                    <tr><td colspan="4" style="text-align: center; opacity: 0.6;">No text messages yet...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <h2>📡 Recent Nodes</h2>
+                        <div id="recentNodes">
+                            <div style="text-align: center; opacity: 0.6; padding: 20px;">
+                                No nodes detected yet...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-column">
+                <div class="panel">
+                    <h2>📈 Statistics</h2>
+                    <div class="stats">
+                        <div class="stat-box">
+                            <div class="stat-number" id="totalPackets">0</div>
+                            <div class="stat-label">Total Packets</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-number" id="textMessages">0</div>
+                            <div class="stat-label">Text Messages</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-number" id="activeNodes">0</div>
+                            <div class="stat-label">Active Nodes</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-number" id="telemetryCount">0</div>
+                            <div class="stat-label">Telemetry</div>
+                        </div>
+                    </div>
+
+                    <h3>📊 Network Health</h3>
+                    <div class="network-health">
+                        <div class="health-indicator">
+                            <div class="health-value health-good" id="avgRssi">-</div>
+                            <div>Avg RSSI</div>
+                        </div>
+                        <div class="health-indicator">
+                            <div class="health-value health-good" id="avgSnr">-</div>
+                            <div>Avg SNR</div>
+                        </div>
+                        <div class="health-indicator">
+                            <div class="health-value health-good" id="hopCount">-</div>
+                            <div>Avg Hops</div>
+                        </div>
+                    </div>
+
+                    <h3>🔋 Battery Levels</h3>
+                    <div id="batteryLevels">
+                        <div style="text-align: center; opacity: 0.6; padding: 20px;">
+                            No battery data yet...
+                        </div>
+                    </div>
+
+                    <h3>📡 Signal Strength</h3>
+                    <div class="signal-meter" id="signalMeter">
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.6;">
+                            Waiting for signals...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // MQTT Configuration
+        const MQTT_HOST = 'localhost';
+        const MQTT_PORT = 9001; // WebSocket port for Mosquitto
+        const MQTT_TOPIC = 'meshtastic/packets';
+
+        // Data storage
+        let activityData = [];
+        let textData = [];
+        let batteryData = {};
+        let signalData = [];
+        let nodeData = {};
+        let soundEnabled = true;
+        let processedMessages = new Set(); // Track processed message IDs
+        let stats = {
+            total: 0,
+            text: 0,
+            telemetry: 0,
+            nodes: new Set(),
+            rssiSum: 0,
+            snrSum: 0,
+            hopSum: 0,
+            signalCount: 0
+        };
+
+        // MQTT Client setup
+        let client;
+        let isConnected = false;
+
+        function initMQTT() {
+            try {
+                client = new Paho.MQTT.Client(MQTT_HOST, MQTT_PORT, "meshtastic_dashboard_" + Math.random().toString(36).substr(2, 9));
+                
+                client.onConnectionLost = onConnectionLost;
+                client.onMessageArrived = onMessageArrived;
+                
+                // Connect options
+                const options = {
+                    onSuccess: onConnect,
+                    onFailure: onConnectFailure,
+                    timeout: 10
+                };
+                
+                client.connect(options);
+            } catch (error) {
+                console.error('MQTT initialization failed:', error);
+                updateConnectionStatus(false);
+                setTimeout(() => {
+                    console.log('Trying alternative MQTT connection...');
+                }, 5000);
+            }
+        }
+
+        function onConnect() {
+            console.log('Connected to MQTT broker');
+            isConnected = true;
+            updateConnectionStatus(true);
+            
+            // Subscribe to all meshtastic topics
+            client.subscribe('meshtastic/#');
+            console.log('Subscribed to meshtastic/#');
+        }
+
+        function onConnectFailure(error) {
+            console.error('MQTT connection failed:', error);
+            updateConnectionStatus(false);
+            
+            // Show helpful error message
+            const statusDiv = document.querySelector('.status');
+            statusDiv.innerHTML += '<br><small style="color: #fbbf24;">⚠️ MQTT WebSocket connection failed. Make sure Mosquitto WebSocket is enabled on port 9001</small>';
+            
+            // Retry connection
+            setTimeout(initMQTT, 5000);
+        }
+
+        function onConnectionLost(responseObject) {
+            if (responseObject.errorCode !== 0) {
+                console.log('Connection lost:', responseObject.errorMessage);
+                isConnected = false;
+                updateConnectionStatus(false);
+                
+                // Attempt to reconnect
+                setTimeout(initMQTT, 3000);
+            }
+        }
+
+        function onMessageArrived(message) {
+            try {
+                const packet = JSON.parse(message.payloadString);
+                processPacket(packet);
+            } catch (error) {
+                console.error('Error processing message:', error);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connectionStatus');
+            if (connected) {
+                statusEl.textContent = 'Connected';
+                statusEl.className = 'connection-status connected';
+            } else {
+                statusEl.textContent = 'Disconnected';
+                statusEl.className = 'connection-status disconnected';
+            }
+        }
+
+        function processPacket(packet) {
+            // Create unique message ID to prevent duplicates
+            const messageId = `${packet.timestamp}_${packet.from_id}_${packet.message_type}_${packet.message_count || 0}`;
+            
+            // Skip if we've already processed this message
+            if (processedMessages.has(messageId)) {
+                console.log('Duplicate message detected, skipping:', messageId);
+                return;
+            }
+            processedMessages.add(messageId);
+            
+            // Keep only recent message IDs (last 1000)
+            if (processedMessages.size > 1000) {
+                const oldIds = Array.from(processedMessages).slice(0, 500);
+                oldIds.forEach(id => processedMessages.delete(id));
+            }
+            
+            // Filter out undefined, null, or invalid nodes
+            const fromName = packet.from_name || packet.from_id;
+            const toName = packet.to_name || packet.to_id;
+            
+            if (isInvalidNode(fromName) || isInvalidNode(toName)) {
+                console.log('Ignoring packet with invalid node names:', {from: fromName, to: toName});
+                return;
+            }
+            
+            resetIdleTimer();
+            
+            // Update stats
+            stats.total++;
+            stats.nodes.add(fromName);
+            
+            // Update node data
+            updateNodeData(packet);
+            
+            // Track signal quality
+            if (packet.rssi && packet.rssi !== 0) {
+                stats.rssiSum += packet.rssi;
+                stats.snrSum += (packet.snr || 0);
+                stats.hopSum += ((packet.hop_start || 0) - (packet.hop_limit || 0));
+                stats.signalCount++;
+                
+                addSignalData(packet);
+            }
+            
+            if (packet.message_type === 'text') {
+                stats.text++;
+                addTextMessage(packet);
+                playSound('message');
+                checkForAlerts(packet.text);
+            } else if (packet.message_type === 'telemetry') {
+                stats.telemetry++;
+                updateBattery(packet);
+                playSound('telemetry');
+            } else if (packet.message_type === 'position') {
+                playSound('position');
+            }
+
+            addActivity(packet);
+            updateStats();
+            updateNetworkHealth();
+            updateRecentNodes();
+            updateLastUpdate();
+        }
+
+        function isInvalidNode(nodeName) {
+            if (!nodeName) return true;
+            
+            const invalidNames = [
+                'undefined',
+                'null',
+                'Unknown',
+                'UNK',
+                '',
+                '!00000000',
+                '!ffffffff'
+            ];
+            
+            // Check exact matches (case insensitive)
+            const lowerName = nodeName.toLowerCase();
+            if (invalidNames.some(invalid => lowerName === invalid.toLowerCase())) {
+                return true;
+            }
+            
+            // Check for obviously invalid patterns
+            if (lowerName.includes('undefined') || 
+                lowerName.includes('null') ||
+                nodeName.length < 2) {
+                return true;
+            }
+            
+            return false;
+        }
+
+        function addActivity(packet) {
+            const time = new Date(packet.timestamp).toLocaleTimeString();
+            const content = getContentForPacket(packet);
+            
+            const fromName = packet.from_name || packet.from_id;
+            const toName = packet.to_name || packet.to_id;
+            
+            // Skip activity from invalid nodes
+            if (isInvalidNode(fromName)) {
+                return;
+            }
+            
+            const entry = {
+                time,
+                from: fromName,
+                type: packet.message_type || 'unknown',
+                content,
+                rssi: packet.rssi || 0,
+                snr: (packet.snr || 0).toFixed(1)
+            };
+            
+            activityData.unshift(entry);
+            if (activityData.length > 30) {
+                activityData = activityData.slice(0, 30);
+            }
+            
+            if (!updateActivityTable.pending) {
+                updateActivityTable.pending = true;
+                setTimeout(() => {
+                    updateActivityTable();
+                    updateActivityTable.pending = false;
+                }, 100);
+            }
+        }
+
+        function addTextMessage(packet) {
+            const time = new Date(packet.timestamp).toLocaleTimeString();
+            const fromName = packet.from_name || packet.from_id;
+            
+            // Skip text messages from invalid nodes
+            if (isInvalidNode(fromName)) {
+                return;
+            }
+            
+            const entry = {
+                time,
+                from: fromName,
+                text: packet.text || '',
+                signal: `${packet.rssi}dBm / ${(packet.snr || 0).toFixed(1)}dB`
+            };
+            
+            textData.unshift(entry);
+            if (textData.length > 20) {
+                textData = textData.slice(0, 20);
+            }
+            
+            updateTextTable();
+        }
+
+        function updateBattery(packet) {
+            if (packet.battery_level !== undefined) {
+                const nodeName = packet.from_name || packet.from_id;
+                batteryData[nodeName] = packet.battery_level;
+                updateBatteryDisplay();
+            }
+        }
+
+        function getContentForPacket(packet) {
+            switch (packet.message_type) {
+                case 'text':
+                    return packet.text || '';
+                case 'telemetry':
+                    return `Battery: ${packet.battery_level || 0}%`;
+                case 'position':
+                    return 'Position update';
+                case 'nodeinfo':
+                    return 'Node info';
+                default:
+                    return packet.message_type || 'Unknown';
+            }
+        }
+
+        function updateActivityTable() {
+            const tbody = document.getElementById('activityTable');
+            tbody.innerHTML = activityData.map(entry => `
+                <tr class="message-row">
+                    <td>${entry.time}</td>
+                    <td>${entry.from}</td>
+                    <td class="type-${entry.type}">${entry.type}</td>
+                    <td>${entry.content}</td>
+                    <td>${entry.rssi}</td>
+                    <td>${entry.snr}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateTextTable() {
+            const tbody = document.getElementById('textTable');
+            tbody.innerHTML = textData.map(entry => `
+                <tr class="message-row">
+                    <td>${entry.time}</td>
+                    <td>${entry.from}</td>
+                    <td>${entry.text}</td>
+                    <td>${entry.signal}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateBatteryDisplay() {
+            const container = document.getElementById('batteryLevels');
+            const html = Object.entries(batteryData).map(([node, level]) => `
+                <div class="battery-display">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>${node}</span>
+                        <span>${level}%</span>
+                    </div>
+                    <div class="battery-bar">
+                        <div class="battery-fill" style="width: ${Math.min(level, 100)}%"></div>
+                        <div class="battery-percentage">${level}%</div>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html || '<div style="text-align: center; opacity: 0.6; padding: 20px;">No battery data yet...</div>';
+        }
+
+        function addSignalData(packet) {
+            const time = Date.now();
+            signalData.push({
+                time,
+                rssi: packet.rssi,
+                snr: packet.snr || 0,
+                node: packet.from_name || packet.from_id
+            });
+            
+            if (signalData.length > 50) {
+                signalData = signalData.slice(-50);
+            }
+            
+            updateSignalMeter();
+        }
+
+        function updateSignalMeter() {
+            const meter = document.getElementById('signalMeter');
+            meter.innerHTML = '';
+            
+            const recentSignals = signalData.slice(-20);
+            recentSignals.forEach((signal, index) => {
+                const bar = document.createElement('div');
+                bar.className = 'signal-bar';
+                
+                const height = Math.max(0, Math.min(100, ((signal.rssi + 120) / 90) * 100));
+                bar.style.height = height + '%';
+                bar.style.left = (index * 5) + '%';
+                bar.style.width = '4%';
+                
+                if (signal.rssi > -60) {
+                    bar.style.background = '#22c55e';
+                } else if (signal.rssi > -80) {
+                    bar.style.background = '#eab308';
+                } else {
+                    bar.style.background = '#ef4444';
+                }
+                
+                bar.title = `${signal.node}: ${signal.rssi}dBm, SNR: ${signal.snr.toFixed(1)}dB`;
+                meter.appendChild(bar);
+            });
+        }
+
+        function updateNetworkHealth() {
+            if (stats.signalCount > 0) {
+                const avgRssi = stats.rssiSum / stats.signalCount;
+                const avgSnr = stats.snrSum / stats.signalCount;
+                const avgHops = stats.hopSum / stats.signalCount;
+                
+                const rssiEl = document.getElementById('avgRssi');
+                rssiEl.textContent = avgRssi.toFixed(0) + 'dBm';
+                rssiEl.className = 'health-value ' + getHealthClass(avgRssi, -80, -60);
+                
+                const snrEl = document.getElementById('avgSnr');
+                snrEl.textContent = avgSnr.toFixed(1) + 'dB';
+                snrEl.className = 'health-value ' + getHealthClass(avgSnr, 5, 10);
+                
+                const hopEl = document.getElementById('hopCount');
+                hopEl.textContent = avgHops.toFixed(1);
+                hopEl.className = 'health-value ' + getHealthClass(avgHops, 2, 1, true);
+            }
+        }
+
+        function getHealthClass(value, warning, good, reverse = false) {
+            if (reverse) {
+                if (value <= good) return 'health-good';
+                if (value <= warning) return 'health-warning';
+                return 'health-critical';
+            } else {
+                if (value >= good) return 'health-good';
+                if (value >= warning) return 'health-warning';
+                return 'health-critical';
+            }
+        }
+
+        function updateNodeData(packet) {
+            const nodeId = packet.from_name || packet.from_id;
+            const now = Date.now();
+            
+            // Skip invalid nodes
+            if (isInvalidNode(nodeId)) {
+                return;
+            }
+            
+            if (!nodeData[nodeId]) {
+                nodeData[nodeId] = {
+                    name: nodeId,
+                    firstSeen: now,
+                    lastSeen: now,
+                    messageCount: 0,
+                    rssi: null,
+                    snr: null,
+                    battery: null,
+                    messageTypes: new Set()
+                };
+            }
+            
+            const node = nodeData[nodeId];
+            node.lastSeen = now;
+            node.messageCount++;
+            node.messageTypes.add(packet.message_type);
+            
+            if (packet.rssi && packet.rssi !== 0) {
+                node.rssi = packet.rssi;
+                node.snr = packet.snr || 0;
+            }
+            
+            if (packet.battery_level !== undefined) {
+                node.battery = packet.battery_level;
+            }
+        }
+
+        function updateRecentNodes() {
+            const container = document.getElementById('recentNodes');
+            
+            // Filter out invalid nodes and sort by last activity
+            const validNodes = Object.values(nodeData)
+                .filter(node => !isInvalidNode(node.name))
+                .sort((a, b) => b.lastSeen - a.lastSeen)
+                .slice(0, 10); // Show last 10 valid nodes
+            
+            if (validNodes.length === 0) {
+                container.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 20px;">No valid nodes detected yet...</div>';
+                return;
+            }
+            
+            const html = validNodes.map(node => {
+                const timeSinceLastSeen = Date.now() - node.lastSeen;
+                const isActive = timeSinceLastSeen < 300000; // 5 minutes
+                const timeAgo = formatTimeAgo(timeSinceLastSeen);
+                
+                return `
+                    <div class="node-card ${isActive ? '' : 'inactive'}">
+                        <div class="node-header">
+                            <div class="node-name">${node.name}</div>
+                            <div class="node-time">${timeAgo}</div>
+                        </div>
+                        <div class="node-info">
+                            <div class="node-stat">
+                                <div class="node-stat-value">${node.messageCount}</div>
+                                <div class="node-stat-label">Messages</div>
+                            </div>
+                            <div class="node-stat">
+                                <div class="node-stat-value">${node.rssi ? node.rssi + 'dBm' : 'N/A'}</div>
+                                <div class="node-stat-label">RSSI</div>
+                            </div>
+                            <div class="node-stat">
+                                <div class="node-stat-value">${node.battery !== null ? node.battery + '%' : 'N/A'}</div>
+                                <div class="node-stat-label">Battery</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = `<div class="recent-nodes-list">${html}</div>`;
+        }
+
+        function formatTimeAgo(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            
+            if (hours > 0) return `${hours}h ago`;
+            if (minutes > 0) return `${minutes}m ago`;
+            return `${seconds}s ago`;
+        }
+
+        function checkForAlerts(message) {
+            const alertWords = ['help', 'emergency', 'sos', 'urgent', 'alert', 'mayday'];
+            const lowerMessage = message.toLowerCase();
+            
+            for (const word of alertWords) {
+                if (lowerMessage.includes(word)) {
+                    showAlert(`Emergency keyword detected: "${word}" in message!`);
+                    playSound('alert');
+                    break;
+                }
+            }
+        }
+
+        function showAlert(text) {
+            const banner = document.getElementById('alertBanner');
+            const alertText = document.getElementById('alertText');
+            alertText.textContent = text;
+            banner.style.display = 'block';
+            
+            setTimeout(() => {
+                banner.style.display = 'none';
+            }, 10000);
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                switch (type) {
+                    case 'message':
+                        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                        oscillator.start();
+                        oscillator.stop(audioCtx.currentTime + 0.1);
+                        break;
+                    case 'telemetry':
+                        oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+                        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                        oscillator.start();
+                        oscillator.stop(audioCtx.currentTime + 0.05);
+                        break;
+                    case 'position':
+                        oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+                        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                        oscillator.start();
+                        oscillator.stop(audioCtx.currentTime + 0.08);
+                        break;
+                    case 'alert':
+                        for (let i = 0; i < 3; i++) {
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+                            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                            osc.start(audioCtx.currentTime + i * 0.2);
+                            osc.stop(audioCtx.currentTime + i * 0.2 + 0.1);
+                        }
+                        break;
+                }
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+        }
+
+        function toggleSounds() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('soundBtn');
+            btn.textContent = soundEnabled ? '🔊 ON' : '🔇 OFF';
+            btn.classList.toggle('active', soundEnabled);
+        }
+
+        function clearData() {
+            if (confirm('Clear all data? This will reset statistics and message history.')) {
+                activityData = [];
+                textData = [];
+                batteryData = {};
+                signalData = [];
+                nodeData = {};
+                processedMessages.clear();
+                stats = {
+                    total: 0,
+                    text: 0,
+                    telemetry: 0,
+                    nodes: new Set(),
+                    rssiSum: 0,
+                    snrSum: 0,
+                    hopSum: 0,
+                    signalCount: 0
+                };
+                
+                updateActivityTable();
+                updateTextTable();
+                updateBatteryDisplay();
+                updateStats();
+                updateNetworkHealth();
+                updateRecentNodes();
+                document.getElementById('signalMeter').innerHTML = '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.6;">Waiting for signals...</div>';
+            }
+        }
+
+        function exportData() {
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                stats: {
+                    total: stats.total,
+                    text: stats.text,
+                    telemetry: stats.telemetry,
+                    nodes: Array.from(stats.nodes),
+                    rssiSum: stats.rssiSum,
+                    snrSum: stats.snrSum,
+                    hopSum: stats.hopSum,
+                    signalCount: stats.signalCount
+                },
+                activity: activityData,
+                textMessages: textData,
+                batteryLevels: batteryData,
+                signalData,
+                nodeData: Object.fromEntries(
+                    Object.entries(nodeData).map(([key, node]) => [
+                        key, 
+                        {...node, messageTypes: Array.from(node.messageTypes)}
+                    ])
+                )
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `meshtastic_data_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+            link.click();
+        }
+
+        function updateStats() {
+            // Filter out invalid nodes from stats
+            const validNodes = Array.from(stats.nodes).filter(node => !isInvalidNode(node));
+            
+            document.getElementById('totalPackets').textContent = stats.total;
+            document.getElementById('textMessages').textContent = stats.text;
+            document.getElementById('activeNodes').textContent = validNodes.length;
+            document.getElementById('telemetryCount').textContent = stats.telemetry;
+            document.getElementById('packetCount').textContent = stats.total;
+        }
+
+        function updateLastUpdate() {
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log('Error attempting to enable fullscreen:', err);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        let lastActivity = Date.now();
+        setInterval(() => {
+            if (Date.now() - lastActivity > 1800000) { // 30 minutes
+                console.log('Auto-refreshing for stability...');
+                location.reload();
+            }
+        }, 60000);
+
+        function resetIdleTimer() {
+            lastActivity = Date.now();
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            console.log('Initializing Meshtastic Dashboard...');
+            initMQTT();
+        });
+    </script>
+</body>
+</html>

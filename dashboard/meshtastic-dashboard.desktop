@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Meshtastic Dashboard
+Exec=chromium-browser --kiosk --disable-infobars --disable-restore-session-state file:///home/pi/meshtastic_dashboard/meshtastic-dashboard.html
+Exec=chromium-browser --kiosk --disable-infobars --disable-restore-session-state file:///home/pi/meshtastic_dashboard/meshtastic_dashboard.html http://localhost:8080/
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true

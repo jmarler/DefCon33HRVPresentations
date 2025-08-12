@@ -1,0 +1,27 @@
+[Unit]
+Description=Meshtastic MQTT Bridge for DefCon 33
+After=network-online.target mosquitto.service
+Wants=network-online.target
+Requires=mosquitto.service
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/meshtastic_dashboard
+Environment=PATH=$VENV_PATH/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/pi/meshtastic-py/bin/python /home/pi/meshtastic_dashboard/mqtt_bridge.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=false
+ProtectSystem=strict
+ReadWritePaths=/home/pi/meshtastic_dashboard
+
+[Install]
+WantedBy=multi-user.target
